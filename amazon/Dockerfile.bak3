@@ -1,0 +1,33 @@
+FROM amazonlinux
+
+# Install dependencies
+RUN yum install -y httpd 
+RUN yum install -y php 
+# RUN yum install -y wget openssh-clients vi 
+# RUN yum install -y java-1.8.0-openjdk
+
+# Install app
+RUN echo "<?php phpinfo(); ?>" > /var/www/html/test.php
+RUN chown -R apache /var/www/html
+RUN mkdir /var/log/apache
+
+ENV APACHE_RUN_USER apache
+ENV APACHE_LOG_DIR /var/log/apache
+
+RUN yum install -y openssh-server
+RUN mkdir /var/run/sshd
+RUN echo 'root:password_' | chpasswd
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+ENV NOTVISIBLE "in users profile"
+RUN echo "export VISIBLE=now" >> /etc/profile
+
+EXPOSE 22
+EXPOSE 80
+
+RUN /usr/sbin/httpd -k start
+
+CMD ["/usr/sbin/sshd", "-D"]
